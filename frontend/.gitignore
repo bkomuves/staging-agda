@@ -1,0 +1,10 @@
+*.agdai
+*.agda~
+\#*
+.#*
+tmp
+MAlonzo/
+Main
+x
+y
+z

@@ -1,0 +1,8 @@
+*.ast
+*.hi
+*.o
+main
+x
+y
+z
+examples
