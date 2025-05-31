@@ -30,6 +30,18 @@ infixr 1 ~>
 (~>) :: Ty -> Ty -> Ty
 (~>) = Arrow
 
+isArrowTy :: Ty -> Bool
+isArrowTy (Arrow _ _) = True
+isArrowTy _           = False
+
+isAtomicBuiltInTy :: Ty -> Bool
+isAtomicBuiltInTy ty = case ty of
+  Unit -> True
+  Bit  -> True
+  U64  -> True
+  Nat  -> True
+  _    -> False
+
 --------------------------------------------------------------------------------
 
 data Typed a 

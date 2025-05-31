@@ -25,7 +25,7 @@ open import Examples.Tests
 --------------------------------------------------------------------------------
 
 exStr1 : String
-exStr1 = Export.exportToString myApplication
+exStr1 = Export.exportToString exMod1 -- exSmall1 --  myApplication
 
 -- letFunTest -- liftTest1 -- myApplication -- small2 -- exMont2 -- mixedLam1 -- lamEx2a -- exMod1 -- natEx2 
 

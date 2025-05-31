@@ -13,6 +13,7 @@ import Control.Monad.State.Strict
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq    ; import Data.Sequence ( Seq , (|>) , (<|) , (><) )
 import qualified Data.IntMap   as IntMap ; import Data.IntMap   ( IntMap )
+import qualified Data.Set      as Set    ; import Data.Set      ( Set )
 
 import AST.Ty
 import AST.Val
@@ -84,8 +85,26 @@ data ANF hole = MkANF
 
 type ANFE = ANF (Typed ExpA)
 
+--------------------------------------------------------------------------------
+
 typeOfANFE :: ANFE -> Ty
 typeOfANFE = typeOf . _in
+
+extractAllTysTyExp :: Typed ExpA -> Set Ty
+extractAllTysTyExp (MkTyped ty expr) = Set.insert ty $ extractAllTysExp expr
+
+extractAllTysExp :: ExpA -> Set Ty
+extractAllTysExp expr = case expr of
+  AtmE atom      -> Set.empty   -- hmmm
+  AppE top args  -> Set.empty
+  PriE op  args  -> Set.empty
+  IftE c tbr fbr -> Set.union (extractAllTysANF tbr) (extractAllTysANF fbr)
+
+extractAllTysANF :: ANFE -> Set Ty
+extractAllTysANF (MkANF lets main) = Set.union (extractAllTysTyExp main) rest where
+  rest = Set.unions 
+       $ map extractAllTysTyExp 
+       $ F.toList lets 
 
 --------------------------------------------------------------------------------
 

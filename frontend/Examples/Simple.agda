@@ -46,6 +46,10 @@ exBig0 = snd (Algebra.BigInt.add big1 big2)
 exBig1 : Tm Bit
 exBig1 = Algebra.BigInt.isGE big2 big1 
 
+exSmall1 : Tm (BigInt 2)
+exSmall1 = Algebra.BigInt.subNC small2 small1
+-- exSmall1 = Algebra.BigInt.addNC small1 small2
+
 exSmall2 : Tm Bit
 exSmall2 = Algebra.BigInt.isGE small1 small2 
 

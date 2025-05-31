@@ -14,20 +14,21 @@ import Run.Eval
 
 import CodeGen.Lifting
 import CodeGen.ANF
+import CodeGen.C.Source
 
 import Big.Marshal
 
 --------------------------------------------------------------------------------
 
--- main = main_Poseidon
+main = main_Poseidon
 -- main = main_MontP
 -- main = main_LetFun
 -- main = main_Lift
 -- main = main_Lam
 -- main = main_ModP 
+-- main = main_Mod1
+-- main = main_Small1
 -- main = main_Nat
-
-main = main_Poseidon
 
 main_Lam = do
   runCommon "examples/ex_mixed.ast" $ \_ -> return ()
@@ -40,6 +41,13 @@ main_Nat = do
 
 main_LetFun = do
   runCommon "examples/ex_letfun1.ast" $ \_ -> return ()
+
+main_Small1 = do
+  runCommon "examples/ex_small1.ast" $ \_ -> return ()
+
+main_Mod1 = do
+  runCommon "examples/ex_mod1.ast" $ \_ -> return ()
+
 
 main_ModP = do
   runCommon "examples/ex.ast" $ \res -> case res of
@@ -61,7 +69,7 @@ main_MontP = do
       printBigIntVal bigint
 
 main_Poseidon = do
-  runCommon' False "examples/ex_posei3.ast" $ \res -> case res of
+  runCommon' False "examples/demo2.ast" $ \res -> case res of
     StructV [bigx, bigy, bigz] -> do
       printBigIntVal bigx
       printBigIntVal bigy
@@ -96,7 +104,7 @@ runCommon' printAstFlag fname kont = do
 
       let program = lambdaLifting ast
       let anf     = programToANF  program
-      -- let csource = anfToCSource  anf 
+      let csource = anfToCSource  anf 
 
       when printAstFlag $ do
         putStrLn "---------------------------"
@@ -108,12 +116,21 @@ runCommon' printAstFlag fname kont = do
         putStrLn $ "ANF converted program:"
         printANFProgram anf
 
+--      printANFProgram anf
+
 {-
       when printAstFlag $ do
         putStrLn "---------------------------"
         putStrLn $ "C source code:"
-        printANFProgram csource
+        putStrLn csource
 -}
+
+      when printAstFlag $ do 
+        putStrLn "---------------------------"
+        putStrLn $ "C source code:"
+        putStrLn csource
+  
+      writeFile "examples/out.c" csource
 
       putStrLn "---------------------------"
       putStrLn $ "program type = " ++ show (inferTy_ ast)
