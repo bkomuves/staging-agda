@@ -46,9 +46,10 @@ __builtin_addcll(unsigned long long x,
 primops :: String
 primops = unlines
   [ ""
+
 {-
-  , "// NOTE: Apple clang version 14.0.3 on ARM generates incorrect code from this....
-  , "// with optimizations enabled (it works correctly with -O0)"
+  , "// NOTE: Apple clang version 14.0.3 on ARM generates incorrect code this"
+  , "// from with optimizations enabled (it works correctly with -O0)"
   , "//"
   , "PairBitU64 addCarryU64( Bit cin , U64 x , U64 y ) {"
   , "  U64 cout_u64;"
@@ -66,14 +67,15 @@ primops = unlines
   , "  return pair;"
   , "}"
 -}
-  , "PairBitU64 addCarryU64( Bit cin , U64 x , U64 y ) {"
+
+  , "static inline PairBitU64 addCarryU64( Bit cin , U64 x , U64 y ) {"
   , "  U64 z  = x + y + cin;"
   , "  Bit cout = ( (cin) ? (z <= x) : (z < x) );"
   , "  PairBitU64 pair  = { cout ,  z };"
   , "  return pair;"
   , "}"
   , ""
-  , "PairBitU64 subCarryU64( Bit cin , U64 x , U64 y ) {"
+  , "static inline PairBitU64 subCarryU64( Bit cin , U64 x , U64 y ) {"
   , "  U64 z  = x - y - cin;"
   , "  Bit cout = ( (cin) ? (z >= x) : (z > x) );"
   , "  PairBitU64 pair  = { cout , z };"
@@ -81,7 +83,7 @@ primops = unlines
   , "}"
 
   , ""
-  , "PairU64U64 mulExtU64( U64 x , U64 y ) {"
+  , "static inline PairU64U64 mulExtU64( U64 x , U64 y ) {"
   , "  __uint128_t z = ((__uint128_t)x) * y;"
   , "  uint64_t lo = (uint64_t) z;"
   , "  uint64_t hi = (uint64_t)(z >> 64);"
@@ -89,7 +91,7 @@ primops = unlines
   , "  return pair;"
   , "}"
   , ""
-  , "PairU64U64 mulAddU64( U64 a , U64 x , U64 y ) {"
+  , "static inline PairU64U64 mulAddU64( U64 a , U64 x , U64 y ) {"
   , "  __uint128_t z = (((__uint128_t)x) * y) + a; "
   , "  uint64_t lo = (uint64_t) z;"
   , "  uint64_t hi = (uint64_t)(z >> 64);"

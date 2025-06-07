@@ -20,8 +20,8 @@ import Big.Marshal
 
 --------------------------------------------------------------------------------
 
-main = main_Poseidon
--- main = main_MontP
+-- main = main_Poseidon
+main = main_MontP
 -- main = main_LetFun
 -- main = main_Lift
 -- main = main_Lam
@@ -64,12 +64,12 @@ main_ModP = do
     expected = xplusy
 
 main_MontP = do
-  runCommon' False "examples/ex_mont2.ast" $ \res -> case res of
+  runCommon' False "examples/ex_mont2d.ast" $ \res -> case res of
     bigint -> do
       printBigIntVal bigint
 
 main_Poseidon = do
-  runCommon' False "examples/demo2.ast" $ \res -> case res of
+  runCommon' False "examples/ex_posei5.ast" $ \res -> case res of
     StructV [bigx, bigy, bigz] -> do
       printBigIntVal bigx
       printBigIntVal bigy
@@ -115,15 +115,6 @@ runCommon' printAstFlag fname kont = do
         putStrLn "---------------------------"
         putStrLn $ "ANF converted program:"
         printANFProgram anf
-
---      printANFProgram anf
-
-{-
-      when printAstFlag $ do
-        putStrLn "---------------------------"
-        putStrLn $ "C source code:"
-        putStrLn csource
--}
 
       when printAstFlag $ do 
         putStrLn "---------------------------"

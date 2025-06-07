@@ -44,12 +44,12 @@ data Atom
 
 --------------------------------------------------------------------------------
 
-isAtom :: Raw -> Maybe Atom
-isAtom (Var   j) = Just (VarA j)
-isAtom (Top   k) = Just (TopA k)
-isAtom (Lit   x) = Just (KstA x)
-isAtom (Log _ r) = isAtom r
-isAtom _         = Nothing
+mbAtom :: Raw -> Maybe Atom
+mbAtom (Var   j) = Just (VarA j)
+mbAtom (Top   k) = Just (TopA k)
+mbAtom (Lit   x) = KstA <$> mbAtomicValue x
+mbAtom (Log _ r) = mbAtom r
+mbAtom _         = Nothing
 
 -- multi-application
 data Application a 
@@ -238,13 +238,41 @@ workerAtomList (this:rest) = do
   MkANF lets2 atoms <- workerAtomList rest
   return $ MkANF (lets1 >< lets2) (atom1 : atoms)
 
+workerValue :: Val -> M (ANF (Typed ExpA))
+workerValue y = case isAtomicValue y of
+  True  -> return $ MkANF Seq.empty (MkTyped (valTy y) (AtmE $ KstA y)) 
+  False -> case y of
+    StructV xs -> workerStruct xs
+    WrapV n x  -> do
+      MkANF lets (MkTyped ty atom) <- workerAtom (Lit x)
+      let new = MkTyped (Named n ty) (PriE (RawWrap n) [atom])
+      return $ MkANF lets new
+    _ -> error $ "workerANF: a literal which is neither atomic nor a struct (2):\n  " ++ show y
+
+workerStruct :: [Val] -> M (ANF (Typed ExpA))
+workerStruct vals = do
+  MkANF lets tyAtoms <- workerAtomList $ map Lit vals
+  let (tys,atoms) = unzipTy tyAtoms
+  let ty   = Struct tys
+  let expr = PriE (MkRawPrim "MkStruct") atoms
+  return $ MkANF lets (MkTyped ty expr)
+
 workerANF :: Raw -> M (ANF (Typed ExpA))
 workerANF raw = withPartialReset $ unsafeWorkerANF raw
 
 unsafeWorkerANF :: Raw -> M (ANF (Typed ExpA))
 unsafeWorkerANF term = case term of
 
-  Lit y -> return $ MkANF Seq.empty (MkTyped (valTy y) (AtmE $ KstA y)) 
+  Lit y -> workerValue y
+{-
+  Lit y -> case isAtomicValue y of
+    True  -> return $ MkANF Seq.empty (MkTyped (valTy y) (AtmE $ KstA y)) 
+    False -> case y of
+      StructV xs -> workerStruct xs
+      Named _ x
+      _ -> error "workerANF: a literal which is neither atomic nor a struct (1)"
+-}
+
 
   Var j -> do
     ty <- typeOfLocalVar j

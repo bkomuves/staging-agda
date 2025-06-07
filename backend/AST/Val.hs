@@ -35,6 +35,21 @@ deriving instance Eq   Val
 deriving instance Show Val
 deriving instance Read Val
 
+isAtomicValue :: Val -> Bool
+isAtomicValue value = case value of
+  Tt          -> True
+  BitV {}     -> True
+  U64V {}     -> True
+  NatV {}     -> True
+  StructV _   -> False
+  WrapV   _ x -> isAtomicValue x
+  FunV {}     -> error "isAtomicValue: called on function"
+
+mbAtomicValue :: Val -> Maybe Val
+mbAtomicValue value = if isAtomicValue value 
+  then Just value
+  else Nothing
+  
 --------------------------------------------------------------------------------
 
 pattern PairV x y = StructV [x,y]

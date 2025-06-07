@@ -42,7 +42,8 @@ anfToCSource program = cprelude ++ sep ++ unlines tydecls ++ sep ++ code where
   (tydecls, tymap) = calculateTyMapping program
   code = runCodegenM topnames tymap action
   action = do
-    generatePrints (Map.keys tymap)
+    generatePrints   (Map.keys tymap)
+    generatePrintLns (Map.keys tymap)
     genProgramCode program
 
 sep :: String
@@ -53,8 +54,7 @@ addMain mainTy = do
   tyname <- fetchTyName mainTy
   addLine $ "int main() {"
   addLine $ "  printf(\"hello, generated C code!\\n\");"
-  addLine $ "  print_" ++ replaceSpaceByUnderscore tyname ++ "( program() );"
-  addLine $ "  printf(\"\\n\");"
+  addLine $ "  println_" ++ replaceSpaceByUnderscore tyname ++ "( \"final result\" , program() );"
   addLine $ "}"
 
 --------------------------------------------------------------------------------
@@ -172,6 +172,13 @@ addLet level tyExpr@(MkTyped ty expr) =
   unless (isArrowTy ty) $ do
     let cvar = "x" ++ show level
     cgenExp level DeclareAndSet cvar tyExpr
+
+{-
+    -- debugging only, print every termporary result
+    MkCTy _ cty <- fetchCTy ty
+    addLine $ "println_" ++ replaceSpaceByUnderscore cty ++ "( " ++ show cvar ++ " , " ++ cvar ++ ");"
+-}
+
 
 cgenExp :: Level -> DeclSet -> CVar -> Typed ExpA -> CG ()
 cgenExp level declset cvar (MkTyped ty expr) = do
@@ -433,6 +440,31 @@ generatePrints tys = do
     addLine first 
     withIndent $ addLines body
     addLine last_ 
+
+  addLine sep
+
+generatePrintLns :: [Ty] -> CG ()
+generatePrintLns tys = do
+
+  addLine ""
+  addLine "// println declarations"
+  addLine ""
+
+  let cond (MkCTy ty _) = not (isArrowTy ty)
+  ctys <- filter cond <$> mapM fetchCTy tys
+  let decls = [ "void println_" ++ replaceSpaceByUnderscore cty ++ "( const char * , " ++ cty ++ " );" | MkCTy _ cty <- ctys ]
+  addLines decls 
+
+  forM_ ctys $ \(MkCTy ty cty) -> do
+    let first = "\nvoid println_" ++ replaceSpaceByUnderscore cty ++ "( const char *name , " ++ cty ++ " input ) {"
+    let body = 
+          [ "if (name != 0) { printf(\"%s = \", name); }"
+          , "print_" ++ replaceSpaceByUnderscore cty ++ "( input );"
+          , "printf(\"\\n\");"
+          ]
+    addLine first 
+    withIndent $ addLines body
+    addLine "}"
 
   addLine sep
 
