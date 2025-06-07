@@ -42,17 +42,19 @@ isLambda what =
 --------------------------------------------------------------------------------
 
 data FunDef a = MkFunDef 
-  { _funIdx  :: Int         -- ^ top level index
-  , _funName :: String
-  , _funType :: FunTy
-  , _funBody :: a 
+  { _funIdx  :: !Int         -- ^ top level index
+  , _funName :: !String      -- ^ name of the function
+  , _funType :: !FunTy       -- ^ type signature of the function
+  , _funBody :: !a           -- ^ function body
+  , _funFix  :: !Bool        -- ^ Is it a fixpoint
   }
   deriving (Eq,Show,Functor)
 
 funDefToLam :: FunDef Raw -> Raw
-funDefToLam (MkFunDef _ _ (MkFunTy args _) body) = go args where
-  go []     = body
-  go (t:ts) = Lam t (go ts)
+funDefToLam (MkFunDef _ _ (MkFunTy args _) body _isFix) = go args
+  where
+    go []     = body
+    go (t:ts) = Lam t (go ts)
 
 data Program a = MkProgram
   { _topLevel :: Seq (FunDef a)
@@ -61,7 +63,7 @@ data Program a = MkProgram
   deriving (Eq,Show)
 
 printFunDefWith :: (a -> String) -> FunDef a -> IO ()
-printFunDefWith userShow (MkFunDef idx name (MkFunTy argsTy retTy) body) = do
+printFunDefWith userShow (MkFunDef idx name (MkFunTy argsTy retTy) body _) = do
   putStrLn $ "\n" ++ show idx ++ ": def " ++ show name
   putStrLn $ " :: " ++ show argsTy ++ " -> " ++ show retTy
   putStrLn $ " = "
@@ -190,8 +192,14 @@ lambdaLifting raw =
  
   where    
 
+    goFix :: Maybe String -> Level -> Context -> Raw -> M Raw
+    goFix = goFun' True
+
     goFun :: Maybe String -> Level -> Context -> Raw -> M Raw
-    goFun !mbName !level !ctx !term = case term of
+    goFun = goFun' False
+
+    goFun' :: Bool -> Maybe String -> Level -> Context -> Raw -> M Raw
+    goFun' !isFix !mbName !level !ctx !term = case term of
       Lam {} -> case isLambda term of
         Just lambda@(MkLambda origArgTys body) -> do
           let origArity = length origArgTys
@@ -205,29 +213,57 @@ lambdaLifting raw =
                 Just e  -> e
           let freeTys   = map ctxLookup freeIdxs            :: [CtxEntry]
           let shiftfun j = if j >= level
-                then Var (j - level + freeArity)
+                then Var (j - level + freeArity)           -- non-recursive argument
                 else case classifyFreeVar ctx j of
                   FTop k  -> Top k
                   FVar _  -> case Map.lookup j mapping of
                     Just i  -> Var i
                     Nothing -> error $ "level " ++ show j ++ " not found in the free variables"
-          let body'' = mapVars shiftfun body
+          let body' = mapVars shiftfun body
           let fullArgTys = (freeTys ++ map SomeEntry origArgTys) :: [CtxEntry]
           let fullArity  = freeArity + origArity   :: Int
           let localCtx   = Seq.fromList fullArgTys :: Context
-          topCtx <- getTopCtx
-          let retTy = inferTy topCtx (fmap entryTy localCtx) body''
-          body''' <- go fullArity localCtx body''
-          MkS topctx funs cnt <- get
-          let this = MkFunDef 
-                { _funIdx  = cnt
-                , _funName = case mbName of { Just n -> n ++ show cnt ; Nothing -> "_fun" ++ show cnt }
-                , _funType = MkFunTy (map entryTy fullArgTys) retTy
-                , _funBody = body'''
-                }
-              thisTy = fromFunTy (_funType this)
-          put $ MkS (topctx |> thisTy) (funs |> this) (cnt+1)
-          return (addApps (Top cnt) (map Var freeIdxs))
+          MkS topCtx topFuns topCnt <- get
+          let retTy = inferTy topCtx (fmap entryTy localCtx) body'
+          body'' <- go fullArity localCtx body
+          case isFix of
+
+            False -> do
+              let this = MkFunDef 
+                    { _funIdx  = topCnt
+                    , _funName = case mbName of { Just n -> n ++ show topCnt ; Nothing -> "_fun" ++ show topCnt }
+                    , _funType = MkFunTy (map entryTy fullArgTys) retTy
+                    , _funBody = body''
+                    , _funFix  = isFix
+                    }
+                  thisTy = fromFunTy (_funType this)
+              put $ MkS (topCtx |> thisTy) (topFuns |> this) (topCnt+1)
+
+            True -> do
+              let recTy = MkFunTy (map entryTy fullArgTys) retTy
+              case fromFunTy recTy of
+                Arrow s t -> if s /= t
+                  then error "lambdaLifting: invalid type inside fixpoint"
+                  else do
+                    let thisTy    = s
+                    let thisFunTy = toFunTy thisTy
+                    let ggg j 
+                          | j <  freeArity  = Var j
+                          | j == freeArity  = Top topCnt
+                          | j >  freeArity  = Var (j-1)
+                    let body''' = mapVars ggg body''
+                    let this = MkFunDef 
+                          { _funIdx  = topCnt
+                          , _funName = case mbName of { Just n -> n ++ show topCnt ; Nothing -> "_fun" ++ show topCnt }
+                          , _funType = thisFunTy
+                          , _funBody = body'''
+                          , _funFix  = isFix
+                          }
+                    put $ MkS (topCtx |> thisTy) (topFuns |> this) (topCnt+1)
+
+                _ -> error "lambdaLifting: fixpoint applied to a non-lambda"
+
+          return (addApps (Top topCnt) (map Var freeIdxs))
         _ -> error "lambdaLifting/goFun: fatal: this should not happen"
       _ -> error "lambdaLifting/goFun: expecting a Lambda"
 
@@ -261,7 +297,11 @@ lambdaLifting raw =
         body' <- go (level+1) (ctx |> entry) body
         return (Let t rhs' body')
 
-      Fix rec -> Fix <$> go level ctx rec
+      -- Fix rec -> Fix <$> go level ctx rec
+      Fix rec -> case rec of
+        Lam {}                 -> goFix Nothing     level ctx rec
+        Log name what@(Lam {}) -> goFix (Just name) level ctx what
+        _                      -> error "lambdaLifting: Fix applied to a non-lambda"
 
       Log name body -> Log name <$> go level ctx body
 

@@ -48,10 +48,10 @@ primops = unlines
   [ ""
 
 {-
-  , "// NOTE: Apple clang version 14.0.3 on ARM generates incorrect code this"
-  , "// from with optimizations enabled (it works correctly with -O0)"
+  , "// NOTE: Apple clang version 14.0.3 on ARM generates incorrect code from"
+  , "// this with optimizations enabled (it works correctly with -O0)"
   , "//"
-  , "PairBitU64 addCarryU64( Bit cin , U64 x , U64 y ) {"
+  , "static inline PairBitU64 addCarryU64( Bit cin , U64 x , U64 y ) {"
   , "  U64 cout_u64;"
   , "  U64 z = __builtin_addcll( x , y , (U64)cin , &cout_u64 );"
   , "  Bit cout = (Bit)cout_u64;"
@@ -59,7 +59,7 @@ primops = unlines
   , "  return pair;"
   , "}"
   , ""
-  , "PairBitU64 subCarryU64( Bit cin , U64 x , U64 y ) {"
+  , "static inline PairBitU64 subCarryU64( Bit cin , U64 x , U64 y ) {"
   , "  U64 cout_u64;"
   , "  U64 z = __builtin_subcll( x , y , (U64)cin , &cout_u64 );"
   , "  Bit cout = (Bit)cout_u64;"

@@ -95,5 +95,10 @@ fromFunTy (MkFunTy args ret) = go args where
   go []     = ret
   go (u:us) = Arrow u (go us)
 
+toFunTy :: Ty -> FunTy
+toFunTy ty = case isFunctionTy ty of
+  Just funty -> funty
+  Nothing    -> error "toFunTy: was not lambda"
+
 --------------------------------------------------------------------------------
  

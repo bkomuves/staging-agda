@@ -106,7 +106,7 @@ evalAnfInEnv topEnv = goANF where
   goTyExp env (MkTyped ty expr) = goExp env expr
 
   goApp :: Env -> FunDef ANFE -> [Val] -> Val
-  goApp env (MkFunDef _idx _name funTy body) args = 
+  goApp env (MkFunDef _idx _name funTy body _fix) args = 
     goANF (Seq.fromList args) body
     
   goExp :: Env -> ExpA -> Val

@@ -21,14 +21,14 @@ import Big.Marshal
 --------------------------------------------------------------------------------
 
 -- main = main_Poseidon
-main = main_MontP
+-- main = main_MontP
 -- main = main_LetFun
 -- main = main_Lift
 -- main = main_Lam
 -- main = main_ModP 
 -- main = main_Mod1
 -- main = main_Small1
--- main = main_Nat
+main = main_Nat
 
 main_Lam = do
   runCommon "examples/ex_mixed.ast" $ \_ -> return ()
@@ -37,7 +37,7 @@ main_Lift = do
   runCommon "examples/ex_lift1.ast" $ \_ -> return ()
 
 main_Nat = do
-  runCommon "examples/ex_nat.ast" $ \_ -> return ()
+  runCommon "examples/ex_nat2.ast" $ \_ -> return ()
 
 main_LetFun = do
   runCommon "examples/ex_letfun1.ast" $ \_ -> return ()

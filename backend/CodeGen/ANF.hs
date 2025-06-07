@@ -197,7 +197,7 @@ incNewLevel = do
 --------------------------------------------------------------------------------
 
 funDefToANF :: TopCtx -> FunDef Raw -> FunDef ANFE
-funDefToANF topCtx fundef@(MkFunDef idx name funTy body) = MkFunDef idx name funTy body' where
+funDefToANF topCtx fundef@(MkFunDef idx name funTy body isFix) = MkFunDef idx name funTy body' isFix where
   argCtx = Seq.fromList (_argTys funTy)
   body'  = toANF' topCtx argCtx body
 
