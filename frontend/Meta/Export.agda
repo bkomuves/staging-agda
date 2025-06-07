@@ -82,9 +82,20 @@ showRValPrec = go where
   go d (BitV b)     = showParen (d >ᵇ appPrec) ("BitV " ++ showBoolHs b)
   go d (U64V w    ) = showParen (d >ᵇ appPrec) ("U64V " ++ showWord64 w)
   go d (NatV n    ) = showParen (d >ᵇ appPrec) ("NatV " ++ showNat    n)
-  go d (StructV xs) = showParen (d >ᵇ appPrec) ("StructV " ++ showList (go 0) xs)
   go d (WrapV n v)  = showParen (d >ᵇ appPrec) ("WrapV " ++ showString n ++ " " ++ go appPrec₊₁ v)
-  
+  go d (StructV xs) = showParen (d >ᵇ appPrec) ("StructV " ++ showList (go 0) xs)
+
+{-
+  -- just testing the termination checker
+  goList : List RVal -> String
+  goList [] = "[]"
+  goList ys = "[ " ++ worker ys where
+    worker : List RVal -> String
+    worker []       = " ]"
+    worker (x ∷ []) = go 0 x ++ " ]"
+    worker (x ∷ xs) = go 0 x ++ ", " ++ worker xs
+-}
+
 showRVal : RVal -> String
 showRVal = showRValPrec 0
 

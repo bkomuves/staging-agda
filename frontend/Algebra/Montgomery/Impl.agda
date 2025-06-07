@@ -62,6 +62,9 @@ private
 #limbs : ℕ
 #limbs = proj₁ Σlimbs
 
+2×#limbs : ℕ
+2×#limbs = #limbs + #limbs
+
 private 
 
   primeBigIntVal : Val (BigInt #limbs)
@@ -81,6 +84,9 @@ private
 
 Big : Ty
 Big = BigInt #limbs
+
+Big² : Ty
+Big² = BigInt 2×#limbs
 
 Mont : Ty
 Mont = Named tyName Big  
@@ -281,10 +287,10 @@ private
   primeBigInt₁ = BigInt.extendBigInt 1 primeBigInt
 
   subPrimeIfNecessary₁ : Tm (BigInt (#limbs + 1)) -> Tm (BigInt (#limbs + 1))
-  subPrimeIfNecessary₁ input = Let input \y -> 
-    ifte (BigInt.isGE y primeBigInt₁)
-      (BigInt.subNC y primeBigInt₁)
-      y
+  subPrimeIfNecessary₁ input = Let input \x -> 
+    ifte (BigInt.isGE x primeBigInt₁)
+      (BigInt.subNC x primeBigInt₁)
+      x
 
   +-lemma₁ : (k : ℕ) -> #limbs + suc k ≡ suc (#limbs + k)
   +-lemma₁ k = Relation.Binary.PropositionalEquality.TrustMe.trustMe
@@ -315,8 +321,9 @@ private
     go : (k : ℕ) -> Tm (Big₁ k) -> Gen (Tm (Big₁ zero))
     go zero     v = return v
     go (suc k₁) v = do
-      v' <- fun k₁ v
-      go k₁ v'
+      v′ <- gen v
+      v″ <- fun k₁ v′
+      go k₁ v″
 
 --------------------------------------------------------------------------------
 
@@ -340,7 +347,8 @@ private
 
   -- body of the outer loop of Montgomery REDC algo
   redcOuterWorker : (k : ℕ) -> Tm (Big₁ (suc k)) -> Gen (Tm (Big₁ k))
-  redcOuterWorker k oldT = do
+  redcOuterWorker k oldT0 = do
+    oldT <- gen oldT0
     vec <- BigInt.deconstruct' oldT
     mlo <- gen (mulTruncU64 (myHead vec) montQTm)
     let idxs = allFin (#limbs + (suc k + 1))
@@ -361,6 +369,7 @@ private
 
 montgomeryREDC : Tm (BigInt (#limbs + #limbs)) -> Tm (BigInt #limbs)
 montgomeryREDC input = wrap (montgomeryREDC' (unwrap input))
+-- montgomeryREDC input = Let input \inp -> wrap (montgomeryREDC' (unwrap inp))
 
 {-
 
@@ -411,6 +420,16 @@ end function
 
 --------------------------------------------------------------------------------
 
+mul' : Tm (Big² ⇒ Big) -> Tm Mont -> Tm Mont -> Tm Mont
+mul' redc mont1 mont2 = unwrap2 mont1 mont2 \big1 big2 -> runGen do
+  prod <- gen (BigInt.mulExt big1 big2)
+  return (wrap (App redc prod))
+
+square' : Tm (Big² ⇒ Big) -> Tm Mont -> Tm Mont
+square' redc mont = unwrap1 mont \big -> runGen do
+  prod <- gen (BigInt.squareExt big)
+  return (wrap (App redc prod))
+
 mul : Tm Mont -> Tm Mont -> Tm Mont
 mul mont1 mont2 = unwrap2 mont1 mont2 \big1 big2 -> runGen do
   prod <- gen (BigInt.mulExt big1 big2)
@@ -421,7 +440,21 @@ square mont = unwrap1 mont \big -> runGen do
   prod <- gen (BigInt.squareExt big)
   return (wrap (montgomeryREDC prod))
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------- 
+
+montValFromℕ : ℕ -> Val Mont
+montValFromℕ k = WrapV (bigIntValFromℕ montk) where
+  montk : ℕ
+  montk = ((k * R-full-ℕ) % prime)
+
+montFromℕ : ℕ -> Tm Mont
+montFromℕ k = Lit (montValFromℕ k)
+
+unsafeFromBigInt' : Tm (Big² ⇒ Big) -> Tm Big -> Tm Mont
+unsafeFromBigInt' redc input = mul' redc (wrap input) (wrap R2)
+
+toBigInt' : Tm (Big² ⇒ Big) -> Tm Mont -> Tm Big
+toBigInt' redc input = App redc (BigInt.extendBigInt #limbs (unwrap input))
 
 -- we assume that the input is in the range [0 , prime-1]
 unsafeFromBigInt : Tm Big -> Tm Mont

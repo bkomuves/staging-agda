@@ -25,7 +25,7 @@ open import Examples.Tests
 --------------------------------------------------------------------------------
 
 exStr1 : String
-exStr1 = Export.exportToString exMod1 -- exSmall1 --  myApplication
+exStr1 = Export.exportToString exMont2b  -- myApplication  -- exBigMul  -- exMod1 -- exSmall1 -- myApplication
 
 -- letFunTest -- liftTest1 -- myApplication -- small2 -- exMont2 -- mixedLam1 -- lamEx2a -- exMod1 -- natEx2 
 
@@ -33,7 +33,7 @@ exStr1 = Export.exportToString exMod1 -- exSmall1 --  myApplication
 
 sanityCheckMontgomery : IO {0ℓ} ⊤
 sanityCheckMontgomery = do
-  putStrLn Examples.Simple.MontP.sanityCheckMontgomeryText
+  putStrLn Examples.Simple.Bar.MontP.sanityCheckMontgomeryText
 
 
 main : Main
