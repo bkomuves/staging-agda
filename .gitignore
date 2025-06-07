@@ -1,2 +1,7 @@
 .DS_Store
 .ghc.environment.*
+tmp
+out.c
+x
+y
+z
