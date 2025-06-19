@@ -21,6 +21,8 @@ open import Algebra.BigInt using ( BigInt )
 
 module Big where
 
+  open import Algebra.BigInt 
+
   halfP+1 : Tm (BigInt 4)
   halfP+1 = bigIntFromℕ 10944121435919637611123202872628637544274182200208017171849102093287904247809
 
@@ -47,18 +49,21 @@ module Big where
   exBig0 = snd (Algebra.BigInt.add big1 big2)
 
   exBig1 : Tm Bit
-  exBig1 = Algebra.BigInt.isGE big2 big1 
+  exBig1 = isGE big2 big1 
 
   exBigMul : Tm (BigInt _)
-  exBigMul = Algebra.BigInt.mulExt big1 big2
+  exBigMul = mulExt big1 big2
 
   exSmall1 : Tm (BigInt 2)
-  exSmall1 = Algebra.BigInt.subNC small2 small1
+  exSmall1 = subNC small2 small1
   -- exSmall1 = Algebra.BigInt.addNC small1 small2
 
   exSmall2 : Tm Bit
-  exSmall2 = Algebra.BigInt.isGE small1 small2 
+  exSmall2 = isGE small1 small2 
 
+  exBinary : Tm (BigInt 4)
+  exBinary = bitXor (bitOr big1 big2) (bitAnd (bitComplement big1) big3)
+  
 --------------------------------------------------------------------------------
 -- *** FIELD PRIME ***
 

@@ -165,6 +165,18 @@ module U64Lib where
   mulAddU64 : Tm U64 -> Tm U64 -> Tm U64 -> Tm U128
   mulAddU64 c x y = Pri (MulAddU64 c x y)
 
+  bitComplU64 : Tm U64 -> Tm U64
+  bitComplU64 x = Pri (BitComplement x)
+  
+  bitOrU64 : Tm U64 -> Tm U64 -> Tm U64
+  bitOrU64 x y = Pri (BitOr x y)
+
+  bitAndU64 : Tm U64 -> Tm U64 -> Tm U64
+  bitAndU64 x y = Pri (BitAnd x y)
+
+  bitXorU64 : Tm U64 -> Tm U64 -> Tm U64
+  bitXorU64 x y = Pri (BitXor x y)
+
   rotLeftU64 : Tm Bit -> Tm U64 -> Tm (Pair Bit U64)
   rotLeftU64 c x = Pri (RotLeftU64 c x)
 

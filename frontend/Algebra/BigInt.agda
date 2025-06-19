@@ -100,6 +100,35 @@ unwrap2 tm1 tm2 g = Let (unwrap tm1) \x -> Let (unwrap tm2) \y -> g x y
 
 --------------------------------------------------------------------------------
 
+bitComplement : Tm (BigInt n) -> Tm (BigInt n)
+bitComplement big = runGen do
+  xs <- deconstruct big
+  let zs = Data.Vec.map bitComplU64 xs
+  return (mkBigInt zs)
+  
+bitOr : Tm (BigInt n) -> Tm (BigInt n) -> Tm (BigInt n)
+bitOr big1 big2 = runGen do
+  xs <- deconstruct big1
+  ys <- deconstruct big2
+  let zs = Data.Vec.zipWith bitOrU64 xs ys
+  return (mkBigInt zs)
+
+bitAnd : Tm (BigInt n) -> Tm (BigInt n) -> Tm (BigInt n)
+bitAnd big1 big2 = runGen do
+  xs <- deconstruct big1
+  ys <- deconstruct big2
+  let zs = Data.Vec.zipWith bitAndU64 xs ys
+  return (mkBigInt zs)
+
+bitXor : Tm (BigInt n) -> Tm (BigInt n) -> Tm (BigInt n)
+bitXor big1 big2 = runGen do
+  xs <- deconstruct big1
+  ys <- deconstruct big2
+  let zs = Data.Vec.zipWith bitXorU64 xs ys
+  return (mkBigInt zs)
+
+--------------------------------------------------------------------------------
+
 isEqual : Tm (BigInt n) -> Tm (BigInt n) -> Tm Bit
 isEqual {n} big1 big2 = unwrap2 big1 big2 \x y -> worker x y (allFin n) where
   worker : Tm (BigInt' n) -> Tm (BigInt' n) -> Vec (Fin n) n -> Tm Bit
@@ -339,6 +368,28 @@ mulExt {n} {m} big1 big2 =
         (sumHi , sumLo) <- pair⇑ (sumU64 (Data.List._++_ prev loList))
         return (sumHi ∷ hiList , sumLo)
 
+private
+
+  open import Data.Fin using ( _↑ˡ_ )
+  
+  smallDiagonal : (n : ℕ) -> Fin n -> List (Fin n × Fin n)
+  smallDiagonal n k = diagonal n n (k ↑ˡ n) 
+
+mulTrunc : {n : ℕ} -> Tm (BigInt n) -> Tm (BigInt n) -> Tm (BigInt n)
+mulTrunc {n} big1 big2 =
+  unwrap2 big1 big2 \xs ys -> runGen do
+    (carry , parts) <- vecMapAccumM (wrapper xs ys) [] (allFin n)
+    return (mkBigInt parts)
+  where
+    wrapper : Tm (BigInt' n) -> Tm (BigInt' n) -> List (Tm U64) -> Fin n -> Gen (List (Tm U64) × Tm U64)
+    wrapper xs ys = worker where
+      worker : List (Tm U64) -> Fin n -> Gen (List (Tm U64) × Tm U64)
+      worker prev k = do
+        pairs <- listMapM (\(i , j) -> pair⇑ (mulExtU64 (vecproj i xs) (vecproj j ys))) (smallDiagonal n k)
+        let (hiList , loList) = Data.List.unzip pairs
+        (sumHi , sumLo) <- pair⇑ (sumU64 (Data.List._++_ prev loList))
+        return (sumHi ∷ hiList , sumLo)
+
 --------------------------------------------------------------------------------
 
 private 
@@ -370,32 +421,32 @@ private
   testFoldDiag4 = foldedDiagonal 5 (fsuc (fsuc (fsuc (fsuc fzero))))
 -}
 
+  duplicateList : List (Tm U64) -> Gen (List (Tm U64))
+  duplicateList []       = return []
+  duplicateList (x ∷ xs) = do
+    x'  <- gen x
+    xs' <- duplicateList xs
+    return (x' ∷ x' ∷ xs')
+
+  helper : List (Tm U64 × Tm U64) -> Gen (List (Tm U64) × List (Tm U64))
+  helper pairs = do
+    let (hiList , loList) = Data.List.unzip pairs
+    hiList' <- duplicateList hiList
+    loList' <- duplicateList loList
+    return (hiList' , loList')
+
+  combineSingle : Maybe (Tm U64 × Tm U64) -> List (Tm U64 × Tm U64) -> Gen (List (Tm U64) × List (Tm U64))
+  combineSingle  nothing           list = helper list 
+  combineSingle (just (hi₁ , lo₁)) list = do
+    (hiList₂ , loList₂) <- helper list
+    return (hi₁ ∷ hiList₂ , lo₁ ∷ loList₂)
+
 squareExt : {n : ℕ} -> Tm (BigInt n) -> Tm (BigInt (n + n))
 squareExt {n} big =
   unwrap1 big \xs -> runGen do
     (carry , parts) <- vecMapAccumM (wrapper xs) [] (allFin (n + n))
     return (mkBigInt parts)
   where
-
-    duplicateList : List (Tm U64) -> Gen (List (Tm U64))
-    duplicateList []       = return []
-    duplicateList (x ∷ xs) = do
-      x'  <- gen x
-      xs' <- duplicateList xs
-      return (x' ∷ x' ∷ xs')
-
-    helper : List (Tm U64 × Tm U64) -> Gen (List (Tm U64) × List (Tm U64))
-    helper pairs = do
-      let (hiList , loList) = Data.List.unzip pairs
-      hiList' <- duplicateList hiList
-      loList' <- duplicateList loList
-      return (hiList' , loList')
-    
-    combineSingle : Maybe (Tm U64 × Tm U64) -> List (Tm U64 × Tm U64) -> Gen (List (Tm U64) × List (Tm U64))
-    combineSingle  nothing           list = helper list 
-    combineSingle (just (hi₁ , lo₁)) list = do
-      (hiList₂ , loList₂) <- helper list
-      return (hi₁ ∷ hiList₂ , lo₁ ∷ loList₂)
 
     wrapper : Tm (BigInt' n) -> List (Tm U64) -> Fin (n + n) -> Gen (List (Tm U64) × Tm U64)
     wrapper xs = worker where
@@ -407,5 +458,84 @@ squareExt {n} big =
         (hiList , loList) <- combineSingle single pairs
         (sumHi , sumLo) <- pair⇑ (sumU64 (Data.List._++_ prev loList))
         return (sumHi ∷ hiList , sumLo)
+
+private
+
+  open import Data.Fin using ( _↑ˡ_ )
+  
+  smallFoldedDiagonal : (n : ℕ) -> Fin n -> FoldedDiag n
+  smallFoldedDiagonal n k = foldedDiagonal n (k ↑ˡ n) 
+
+squareTrunc : {n : ℕ} -> Tm (BigInt n) -> Tm (BigInt n)
+squareTrunc {n} big =
+  unwrap1 big \xs -> runGen do
+    (carry , parts) <- vecMapAccumM (wrapper xs) [] (allFin n)
+    return (mkBigInt parts)
+  where
+
+    wrapper : Tm (BigInt' n) -> List (Tm U64) -> Fin n -> Gen (List (Tm U64) × Tm U64)
+    wrapper xs = worker where
+      worker : List (Tm U64) -> Fin n -> Gen (List (Tm U64) × Tm U64)
+      worker prev k = do
+        let (list , mb) = smallFoldedDiagonal n k
+        pairs  <- listMapM  (\(i , j) -> pair⇑ (mulExtU64 (vecproj i xs) (vecproj j xs))) list
+        single <- maybeMapM (\ i      -> pair⇑ (sqrExtU64 (vecproj i xs)               )) mb 
+        (hiList , loList) <- combineSingle single pairs
+        (sumHi , sumLo) <- pair⇑ (sumU64 (Data.List._++_ prev loList))
+        return (sumHi ∷ hiList , sumLo)
+
+--------------------------------------------------------------------------------
+
+
+open import Algebra.Misc using ( Half ; Even ; Odd ; halve )
+
+--open BitLib
+--open U64Lib
+
+{-# TERMINATING #-}
+powℕ : {nlimbs : ℕ} -> Tm (BigInt nlimbs) -> ℕ -> Tm (BigInt nlimbs)
+powℕ {nlimbs} base expo = go expo base where
+  go : ℕ -> Tm (BigInt nlimbs) -> Tm (BigInt nlimbs)
+  go 0 _ = one nlimbs 
+  go 1 x = x
+  go n x with halve n 
+  go _ x | Even k = Let (go k x) \s ->           squareTrunc s
+  go _ x | Odd  k = Let (go k x) \s -> mulTrunc (squareTrunc s) x
+
+{-
+
+--------------------------------------------------------------------------------
+
+open import Algebra.Limbs
+open import Algebra.API.Word
+
+bigIntAsWordAPI : ℕ -> WordAPI
+bigIntAsWordAPI nlimbs =  record
+  { #bits = 64 * nlimbs
+  ; Word  = BigInt nlimbs
+  ; fromℕ = bigIntFromℕ
+    -- queries
+  ; isEqualℕ = \n y -> isEqual (bigIntFromℕ n) y
+  ; isEqual  = isEqual
+  ; isLT     = isLT
+  ; isLE     = isLE
+    -- arithmetic
+  ; neg   = neg
+  ; add   = add
+  ; sub   = sub
+  ; sqr   = sqr
+  ; mul   = mul
+  ; powℕ  = powℕ
+    -- bit operations
+--  ; complement : Tm Word -> Tm Word
+--  ; bitOr      : Tm Word -> Tm Word -> Tm Word
+--  ; bitAnd     : Tm Word -> Tm Word -> Tm Word
+--  ; bitXor     : Tm Word -> Tm Word -> Tm Word
+    -- shifts
+  ; shiftLeftBy1  = shiftLeftBy1
+  ; shiftRightBy1 = shiftRightBy1
+  }
+
+-}
 
 --------------------------------------------------------------------------------

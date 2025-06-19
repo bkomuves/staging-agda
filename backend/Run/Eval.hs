@@ -5,6 +5,7 @@ module Run.Eval where
 --------------------------------------------------------------------------------
 
 import Data.Word
+import Data.Bits
 
 import qualified Data.Sequence as Seq ; import Data.Sequence ( Seq , (|>) , (><) )
 import qualified Data.Foldable as F
@@ -158,31 +159,35 @@ evalNormalPrim primArgs =
 
   case primArgs of
 
-    "AddU64"      :@@ [ U64V x , U64V y ]             -> U64V (x + y)
-    "SubU64"      :@@ [ U64V x , U64V y ]             -> U64V (x - y)
-    "AddCarryU64" :@@ [ BitV cin , U64V x , U64V y ]  -> pairBitU64 (addCarry64 cin x y)
-    "SubCarryU64" :@@ [ BitV cin , U64V x , U64V y ]  -> pairBitU64 (subCarry64 cin x y)
-    "MulTruncU64" :@@ [ U64V x , U64V y ]             -> U64V (x * y)
-    "MulExtU64"   :@@ [            U64V x , U64V y ]  -> pairU64U64 (mulExtU64   x y)
-    "MulAddU64"   :@@ [ U64V a   , U64V x , U64V y ]  -> pairU64U64 (mulAddU64 a x y)
-    "RotLeftU64"  :@@ [ BitV cin , U64V x ]           -> pairBitU64 (rotLeftU64  cin x)    
-    "RotRightU64" :@@ [ BitV cin , U64V x ]           -> pairBitU64 (rotRightU64 cin x)
-    "EqU64"       :@@ [ U64V x   , U64V y ]           -> BitV (primEqU64 x y) 
-    "LtU64"       :@@ [ U64V x   , U64V y ]           -> BitV (primLtU64 x y)  
-    "LeU64"       :@@ [ U64V x   , U64V y ]           -> BitV (primLeU64 x y) 
-    "CastBitU64"  :@@ [ BitV b ]                      -> U64V (primCastBitU64 b)
-    "Not"         :@@ [ BitV b ]                      -> BitV (not b)
-    "And"         :@@ [ BitV a , BitV b ]             -> BitV (a && b)
-    "Or"          :@@ [ BitV a , BitV b ]             -> BitV (a || b)
-    "IFTE"        :@@ [ BitV b , x , y ]              -> if b then x else y
-    "MkStruct"    :@@ xs                              -> StructV xs
-    "Unwrap"      :@@ [ WrapV _ x ]                   -> x
-    "Zero"        :@@ []                              -> NatV 0
-    "Succ"        :@@ [ NatV n ]                      -> NatV (n + 1)
-    "IsZero"      :@@ [ NatV n ]                      -> BitV (n == 0)
-    "NatAdd"      :@@ [ NatV x , NatV y ]             -> NatV (x + y)
-    "NatMul"      :@@ [ NatV x , NatV y ]             -> NatV (x * y)
-    "NatSubTrunc" :@@ [ NatV x , NatV y ]             -> NatV (max 0 (x - y))
+    "AddU64"        :@@ [ U64V x , U64V y ]             -> U64V (x + y)
+    "SubU64"        :@@ [ U64V x , U64V y ]             -> U64V (x - y)
+    "AddCarryU64"   :@@ [ BitV cin , U64V x , U64V y ]  -> pairBitU64 (addCarry64 cin x y)
+    "SubCarryU64"   :@@ [ BitV cin , U64V x , U64V y ]  -> pairBitU64 (subCarry64 cin x y)
+    "MulTruncU64"   :@@ [ U64V x , U64V y ]             -> U64V (x * y)
+    "MulExtU64"     :@@ [            U64V x , U64V y ]  -> pairU64U64 (mulExtU64   x y)
+    "MulAddU64"     :@@ [ U64V a   , U64V x , U64V y ]  -> pairU64U64 (mulAddU64 a x y)
+    "BitComplement" :@@ [ U64V x ]                      -> U64V (complement x)
+    "BitOr"         :@@ [ U64V x , U64V y ]             -> U64V (x .|. y)
+    "BitAnd"        :@@ [ U64V x , U64V y ]             -> U64V (x .&. y)
+    "BitXor"        :@@ [ U64V x , U64V y ]             -> U64V (x `xor` y)
+    "RotLeftU64"    :@@ [ BitV cin , U64V x ]           -> pairBitU64 (rotLeftU64  cin x)    
+    "RotRightU64"   :@@ [ BitV cin , U64V x ]           -> pairBitU64 (rotRightU64 cin x)
+    "EqU64"         :@@ [ U64V x   , U64V y ]           -> BitV (primEqU64 x y) 
+    "LtU64"         :@@ [ U64V x   , U64V y ]           -> BitV (primLtU64 x y)  
+    "LeU64"         :@@ [ U64V x   , U64V y ]           -> BitV (primLeU64 x y) 
+    "CastBitU64"    :@@ [ BitV b ]                      -> U64V (primCastBitU64 b)
+    "Not"           :@@ [ BitV b ]                      -> BitV (not b)
+    "And"           :@@ [ BitV a , BitV b ]             -> BitV (a && b)
+    "Or"            :@@ [ BitV a , BitV b ]             -> BitV (a || b)
+    "IFTE"          :@@ [ BitV b , x , y ]              -> if b then x else y
+    "MkStruct"      :@@ xs                              -> StructV xs
+    "Unwrap"        :@@ [ WrapV _ x ]                   -> x
+    "Zero"          :@@ []                              -> NatV 0
+    "Succ"          :@@ [ NatV n ]                      -> NatV (n + 1)
+    "IsZero"        :@@ [ NatV n ]                      -> BitV (n == 0)
+    "NatAdd"        :@@ [ NatV x , NatV y ]             -> NatV (x + y)
+    "NatMul"        :@@ [ NatV x , NatV y ]             -> NatV (x * y)
+    "NatSubTrunc"   :@@ [ NatV x , NatV y ]             -> NatV (max 0 (x - y))
 
     _ -> error $ "evalNormalPrim: either unimplement or invalid: `" ++ show (fst primArgs) ++ "`"
 

@@ -293,31 +293,35 @@ cgenNormalPrim primArgs =
 
   case primArgs of
 
-    "AddU64"      :@@ [ x , y ]        -> cgenAtom x ++ " + " ++ cgenAtom y
-    "SubU64"      :@@ [ x , y ]        -> cgenAtom x ++ " - " ++ cgenAtom y
-    "AddCarryU64" :@@ [ cin , x , y ]  -> "addCarryU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
-    "SubCarryU64" :@@ [ cin , x , y ]  -> "subCarryU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
-    "MulTruncU64" :@@ [ x , y ]        -> cgenAtom x ++ " * " ++ cgenAtom y
-    "MulExtU64"   :@@ [ x , y ]        -> "mulExtU64( " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")"
-    "MulAddU64"   :@@ [ a  , x , y ]   -> "mulAddU64( " ++ cgenAtom a ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
-    "RotLeftU64"  :@@ [ cin , x ]      -> "rotLeftU64( "  ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " )"
-    "RotRightU64" :@@ [ cin , x ]      -> "rotRightU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " )"
-    "EqU64"       :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " == " ++ cgenAtom y ++ ")"
-    "LtU64"       :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " < "  ++ cgenAtom y ++ ")"
-    "LeU64"       :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " <= " ++ cgenAtom y ++ ")"
-    "CastBitU64"  :@@ [ b ]            -> "(uint64_t)" ++ cgenAtom b
-    "Not"         :@@ [ b ]            -> "!" ++ cgenAtom b
-    "And"         :@@ [ a , b ]        -> cgenAtom a ++ " && " ++ cgenAtom b
-    "Or"          :@@ [ a , b ]        -> cgenAtom a ++ " || " ++ cgenAtom b
-    "IFTE"        :@@ [ b , x , y ]    -> error "IFTE primop shouldn't appear in ANF"
-    "MkStruct"    :@@ xs               -> cgenStruct_ (map cgenAtom xs)
-    "Unwrap"      :@@ [ x]             -> cgenAtom x
-    "Zero"        :@@ []               -> "0"
-    "Succ"        :@@ [ n ]            -> cgenAtom n ++ " + 1"
-    "IsZero"      :@@ [ n ]            -> "(" ++ cgenAtom n ++ " == 0)"
-    "NatAdd"      :@@ [ x , y ]        -> cgenAtom x ++ " + " ++ cgenAtom y
-    "NatMul"      :@@ [ x , y ]        -> cgenAtom x ++ " * " ++ cgenAtom y
-    "NatSubTrunc" :@@ [ x , y ]        -> "MAX( 0 , " ++ cgenAtom x ++ " - " ++ cgenAtom y ++ ")"
+    "AddU64"        :@@ [ x , y ]        -> cgenAtom x ++ " + " ++ cgenAtom y
+    "SubU64"        :@@ [ x , y ]        -> cgenAtom x ++ " - " ++ cgenAtom y
+    "AddCarryU64"   :@@ [ cin , x , y ]  -> "addCarryU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
+    "SubCarryU64"   :@@ [ cin , x , y ]  -> "subCarryU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
+    "MulTruncU64"   :@@ [ x , y ]        -> cgenAtom x ++ " * " ++ cgenAtom y
+    "MulExtU64"     :@@ [ x , y ]        -> "mulExtU64( " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")"
+    "MulAddU64"     :@@ [ a  , x , y ]   -> "mulAddU64( " ++ cgenAtom a ++ " , " ++ cgenAtom x ++ " , " ++ cgenAtom y ++ ")" 
+    "BitComplement" :@@ [ x ]            -> "~ " ++ cgenAtom x 
+    "BitOr"         :@@ [ x , y ]        -> cgenAtom x ++ " | " ++ cgenAtom y
+    "BitAnd"        :@@ [ x , y ]        -> cgenAtom x ++ " & " ++ cgenAtom y
+    "BitXor"        :@@ [ x , y ]        -> cgenAtom x ++ " ^ " ++ cgenAtom y
+    "RotLeftU64"    :@@ [ cin , x ]      -> "rotLeftU64( "  ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " )"
+    "RotRightU64"   :@@ [ cin , x ]      -> "rotRightU64( " ++ cgenAtom cin ++ " , " ++ cgenAtom x ++ " )"
+    "EqU64"         :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " == " ++ cgenAtom y ++ ")"
+    "LtU64"         :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " < "  ++ cgenAtom y ++ ")"
+    "LeU64"         :@@ [ x   , y ]      -> "(" ++ cgenAtom x ++ " <= " ++ cgenAtom y ++ ")"
+    "CastBitU64"    :@@ [ b ]            -> "(uint64_t)" ++ cgenAtom b
+    "Not"           :@@ [ b ]            -> "!" ++ cgenAtom b
+    "And"           :@@ [ a , b ]        -> cgenAtom a ++ " && " ++ cgenAtom b
+    "Or"            :@@ [ a , b ]        -> cgenAtom a ++ " || " ++ cgenAtom b
+    "IFTE"          :@@ [ b , x , y ]    -> error "IFTE primop shouldn't appear in ANF"
+    "MkStruct"      :@@ xs               -> cgenStruct_ (map cgenAtom xs)
+    "Unwrap"        :@@ [ x]             -> cgenAtom x
+    "Zero"          :@@ []               -> "0"
+    "Succ"          :@@ [ n ]            -> cgenAtom n ++ " + 1"
+    "IsZero"        :@@ [ n ]            -> "(" ++ cgenAtom n ++ " == 0)"
+    "NatAdd"        :@@ [ x , y ]        -> cgenAtom x ++ " + " ++ cgenAtom y
+    "NatMul"        :@@ [ x , y ]        -> cgenAtom x ++ " * " ++ cgenAtom y
+    "NatSubTrunc"   :@@ [ x , y ]        -> "MAX( 0 , " ++ cgenAtom x ++ " - " ++ cgenAtom y ++ ")"
 
     _ -> error $ "cgenNormalPrim: unknown / unhandled primop: `" ++ fst primArgs ++ "`"
 

@@ -3,6 +3,8 @@ module Main where
 
 --------------------------------------------------------------------------------
 
+import Data.Bits
+
 import Control.Monad
 
 import Text.Read
@@ -17,6 +19,7 @@ import CodeGen.ANF
 import CodeGen.C.Source
 
 import Big.Marshal
+import Big.Limbs
 
 --------------------------------------------------------------------------------
 
@@ -26,9 +29,20 @@ import Big.Marshal
 -- main = main_Lift
 -- main = main_Lam
 -- main = main_ModP 
+main = main_binary
 -- main = main_Mod1
 -- main = main_Small1
-main = main_Nat
+-- main = main_Nat
+
+main_binary = do
+  runCommon "examples/ex_binary.ast" $ \_ -> return ()
+  putStrLn $ "\nexpected = " ++ show expected ++ "\n"
+  where
+    xs = integerToLimbs 4 12535032671501493392438659292886563663979619812816639413586309554197071221275
+    ys = integerToLimbs 4 20670156704232560809430694243501641649572216251781105022963497476851362916519
+    zs = integerToLimbs 4 10734482926936635597888852654981536388697257091861152194513442686302125663795
+    f x y z = (x .|. y) `xor` (complement x .&. z)
+    expected = zipWith3 f xs ys zs
 
 main_Lam = do
   runCommon "examples/ex_mixed.ast" $ \_ -> return ()
