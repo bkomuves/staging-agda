@@ -214,6 +214,9 @@ addNC x y = snd (add x y)
 subNC : Tm (BigInt n) -> Tm (BigInt n) -> Tm (BigInt n)
 subNC x y = snd (sub x y)
 
+neg : Tm (BigInt n) -> Tm (BigInt n)
+neg {n} x = subNC (zero n) x
+
 --------------------------------------------------------------------------------
 
 takeBigInt' : {n : ℕ} -> (k : ℕ) -> Tm (BigInt' (k + n)) -> Tm (BigInt' k)
@@ -267,8 +270,8 @@ extendBigInt₁ input = wrap (extendBigInt₁' (unwrap input))
 --------------------------------------------------------------------------------
 
 -- rotate left through carry
-shiftLeftBy1 : Tm Bit -> Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
-shiftLeftBy1 {n} carry₀ big = 
+rotateLeftBy1 : Tm Bit -> Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
+rotateLeftBy1 {n} carry₀ big = 
   unwrap1 big \xs -> runGen do
     (carry₁ , tms) ← worker xs carry₀ (Data.Vec.allFin n)
     return (mkPair carry₁ (mkBigInt tms))
@@ -285,8 +288,8 @@ shiftLeftBy1 {n} carry₀ big =
                          return (c₂ , y ∷ ys)
 
 -- rotate right through carry
-shiftRightBy1 : Tm Bit -> Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
-shiftRightBy1 {n} carry₀ big = 
+rotateRightBy1 : Tm Bit -> Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
+rotateRightBy1 {n} carry₀ big = 
   unwrap1 big \xs -> runGen do
     (carry₁ , tms) ← worker xs carry₀ (Data.Vec.allFin n)
     return (mkPair carry₁ (mkBigInt (Data.Vec.reverse tms)))
@@ -301,6 +304,12 @@ shiftRightBy1 {n} carry₀ big =
                          c₁ , y  ← pair⇑ (rotRightU64 c₀ (vecproj (opposite j) xs))
                          c₂ , ys ← go js c₁
                          return (c₂ , y ∷ ys)
+
+shiftLeftBy1 : Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
+shiftLeftBy1 = rotateLeftBy1 zeroBit
+
+shiftRightBy1 : Tm (BigInt n) -> Tm (Pair Bit (BigInt n))
+shiftRightBy1 = rotateRightBy1 zeroBit
 
 --------------------------------------------------------------------------------
 
@@ -502,11 +511,11 @@ powℕ {nlimbs} base expo = go expo base where
   go _ x | Even k = Let (go k x) \s ->           squareTrunc s
   go _ x | Odd  k = Let (go k x) \s -> mulTrunc (squareTrunc s) x
 
-{-
-
 --------------------------------------------------------------------------------
 
-open import Algebra.Limbs
+{-
+
+open import Algebra.Limbs          -- this causes cyclic dependency
 open import Algebra.API.Word
 
 bigIntAsWordAPI : ℕ -> WordAPI
@@ -527,10 +536,10 @@ bigIntAsWordAPI nlimbs =  record
   ; mul   = mul
   ; powℕ  = powℕ
     -- bit operations
---  ; complement : Tm Word -> Tm Word
---  ; bitOr      : Tm Word -> Tm Word -> Tm Word
---  ; bitAnd     : Tm Word -> Tm Word -> Tm Word
---  ; bitXor     : Tm Word -> Tm Word -> Tm Word
+  ; complement = bitComplement
+  ; bitOr      = bitOr
+  ; bitAnd     = bitAnd
+  ; bitXor     = bitXor
     -- shifts
   ; shiftLeftBy1  = shiftLeftBy1
   ; shiftRightBy1 = shiftRightBy1

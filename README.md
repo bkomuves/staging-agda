@@ -13,7 +13,7 @@ as a proof-of-concept and a learning device.
 ### Algebra libary
 
 - [ ] fixed-size big integers (eg. 256-bit ones)
-  - [ ] bit operations
+  - [x] bit operations
   - [x] comparison
   - [x] addition, subtraction 
   - [x] multiplication, squaring, scaling

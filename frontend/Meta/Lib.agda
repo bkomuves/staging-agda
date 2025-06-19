@@ -135,6 +135,23 @@ open StructLib public
 
 module U64Lib where
 
+  kstU64 : Word64 -> Tm U64
+  kstU64 x = Lit (Val.U64V x)
+
+  kstU64′ : ℕ -> Tm U64
+  kstU64′ k = kstU64 (Data.Word64.fromℕ k)
+
+  zeroU64 : Tm U64
+  zeroU64 = kstU64 (Data.Word64.fromℕ 0)
+
+  oneU64 : Tm U64
+  oneU64 = kstU64 (Data.Word64.fromℕ 1)
+
+  minusOneU64 : Tm U64
+  minusOneU64 = kstU64 (Data.Word64.fromℕ 0xffffffffffffffff)
+
+  ----------------------------------------
+
   hiWordOf : Tm U128 -> Tm U64
   hiWordOf = fst
 
@@ -146,6 +163,9 @@ module U64Lib where
 
   subCarryU64 : Tm Bit -> Tm U64 -> Tm U64 -> Tm (Pair Bit U64)
   subCarryU64 c x y = Pri (SubCarryU64 c x y)
+
+  negU64 : Tm U64 -> Tm U64
+  negU64 y = Pri (SubU64 zeroU64 y)       -- TODO: maybe add NegU64 primop?
 
   addU64 : Tm U64 -> Tm U64 -> Tm U64
   addU64 x y = Pri (AddU64 x y)
@@ -161,6 +181,9 @@ module U64Lib where
 
   mulTruncU64 : Tm U64 -> Tm U64 -> Tm U64
   mulTruncU64 x y = Pri (MulTruncU64 x y)   -- snd (mulExtU64 x y)
+
+  sqrTruncU64 : Tm U64 -> Tm U64
+  sqrTruncU64 x = Pri (MulTruncU64 x x)
 
   mulAddU64 : Tm U64 -> Tm U64 -> Tm U64 -> Tm U128
   mulAddU64 c x y = Pri (MulAddU64 c x y)
@@ -190,21 +213,6 @@ module U64Lib where
 
   shiftRightU64 : Tm U64 -> Tm (Pair Bit U64)
   shiftRightU64 = rotRightU64 zeroBit
-
-  kstU64 : Word64 -> Tm U64
-  kstU64 x = Lit (Val.U64V x)
-
-  kstU64′ : ℕ -> Tm U64
-  kstU64′ k = kstU64 (Data.Word64.fromℕ k)
-
-  zeroU64 : Tm U64
-  zeroU64 = kstU64 (Data.Word64.fromℕ 0)
-
-  oneU64 : Tm U64
-  oneU64 = kstU64 (Data.Word64.fromℕ 1)
-
-  minusOneU64 : Tm U64
-  minusOneU64 = kstU64 (Data.Word64.fromℕ 0xffffffffffffffff)
 
   ----------------------------------------
 
