@@ -14,13 +14,12 @@ import Big.Limbs
 
 --------------------------------------------------------------------------------
 
--- | This is normally CPU instruction
+-- | This is normally a CPU instruction
 addCarry64 :: Bit -> Word64 -> Word64 -> (Bit,Word64)
 addCarry64 carry x y = (carry',z) where
   res    = fromIntegral x + fromIntegral y + fromIntegral (bitToWord64 carry) :: Integer
   z      = fromInteger (res .&. limbMask)
   carry' = shiftR res limbSize > 0 
-
 
 subCarry64 :: Bit -> Word64 -> Word64 -> (Bit,Word64)
 subCarry64 carry x y = (carry',z) where
@@ -79,6 +78,8 @@ primCastBitU64 :: Bit -> Word64
 primCastBitU64 False = 0
 primCastBitU64 True  = 1
 
+{-
+
 primNot :: Bit -> Bit
 primNot = not
 
@@ -91,18 +92,7 @@ primOr = (||)
 iFTE :: Bool -> a -> a -> a
 iFTE cond x y = if cond then x else y
 
+-}
+
 --------------------------------------------------------------------------------
 
-{-
--- struct
-primMkStruct    : HList tm ts -> PrimOp tm (Struct ts)
-primProj        : {n : ℕ} -> {ts : Vec Ty n} ->
-              Fin n -> tm (Struct {n} ts) -> PrimOp tm t
--- nat
-primZero        : PrimOp tm Nat
-primSucc        : tm Nat -> PrimOp tm Nat
-primNatSplit    : tm Nat -> tm s -> tm (Nat ⇒ s) -> PrimOp tm s 
--- input / output
-primInput       : String -> (ty : Ty) -> PrimOp tm ty
-primOutput      : String -> {ty : Ty} -> tm ty -> PrimOp tm Unit
--}

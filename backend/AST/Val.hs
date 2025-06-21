@@ -7,37 +7,59 @@ module AST.Val where
 import Data.Word
 import Text.Read
 
+import Data.Sequence ( Seq , empty )
+
+import Control.Monad.Identity
+
 import AST.Ty
--- import Big.Limbs
 
 --------------------------------------------------------------------------------
 
  -- used only for the evaluator
-data Function 
-  = MkFun (Val -> Val)
+data Function m
+  = MkFun (Val' m -> m (Val' m))
 
-instance Eq   Function where (==)     = error "Function/Eq"
-instance Show Function where show     = error "Function/Show"
-instance Read Function where readPrec = error "Function/Read"
+instance Eq   (Function m) where (==)     = error "Function/Eq"
+instance Show (Function m) where show     = error "Function/Show"
+instance Read (Function m) where readPrec = error "Function/Read"
+
+runFunction :: Function Identity -> Val -> Val
+runFunction (MkFun f) x = runIdentity (f x)
 
 --------------------------------------------------------------------------------
 
-data Val where
-  Tt      ::                  Val
-  BitV    :: Bool          -> Val
-  U64V    :: Word64        -> Val
-  NatV    :: Integer       -> Val
-  StructV :: [Val]         -> Val
-  WrapV   :: String -> Val -> Val
-  FunV    :: Function      -> Val      -- ^ used only for the evaluator
+data Val' m where
+  TtV     ::                     Val' m
+  BitV    :: Bool             -> Val' m
+  U64V    :: Word64           -> Val' m
+  NatV    :: Integer          -> Val' m
+  StructV :: [Val' m]         -> Val' m
+  WrapV   :: String -> Val' m -> Val' m
+  FunV    :: Function m       -> Val' m      -- ^ used only for the evaluator
 
-deriving instance Eq   Val
-deriving instance Show Val
-deriving instance Read Val
+type Val = Val' Identity
 
-isAtomicValue :: Val -> Bool
+castVal :: Val' m1 -> Val' m2
+castVal = go where
+  go :: Val' m1 -> Val' m2
+  go value = case value of
+    TtV        -> TtV     
+    BitV    b  -> BitV b    
+    U64V    x  -> U64V x   
+    NatV    n  -> NatV n   
+    StructV xs -> StructV (map go xs) 
+    WrapV n y  -> WrapV n (go y)
+    FunV {}    -> error "castVal: FunV"
+
+pattern PairV x y = StructV [x,y]
+
+deriving instance Eq   (Val' m)
+deriving instance Show (Val' m)
+deriving instance Read (Val' m)
+
+isAtomicValue :: Val' m -> Bool
 isAtomicValue value = case value of
-  Tt          -> True
+  TtV         -> True
   BitV {}     -> True
   U64V {}     -> True
   NatV {}     -> True
@@ -45,20 +67,25 @@ isAtomicValue value = case value of
   WrapV   _ x -> isAtomicValue x
   FunV {}     -> error "isAtomicValue: called on function"
 
-mbAtomicValue :: Val -> Maybe Val
+mbAtomicValue :: Val' m -> Maybe (Val' m)
 mbAtomicValue value = if isAtomicValue value 
   then Just value
   else Nothing
   
 --------------------------------------------------------------------------------
 
-pattern PairV x y = StructV [x,y]
+type Env' m = Seq (Val' m)
+
+type Env = Env' Identity
+
+emptyEnv :: Env' m 
+emptyEnv = Data.Sequence.empty
 
 --------------------------------------------------------------------------------
 
-valTy :: Val -> Ty
+valTy :: Val' m -> Ty
 valTy val = case val of
-  Tt          -> Unit
+  TtV         -> Unit
   BitV _      -> Bit
   U64V _      -> U64
   NatV _      -> Nat

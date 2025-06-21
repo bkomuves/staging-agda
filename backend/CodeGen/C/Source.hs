@@ -255,7 +255,7 @@ cgenAtom atom = case atom of
 
 cgenVal :: Val -> String
 cgenVal val = case val of
-  Tt          -> "(Unit)0"
+  TtV         -> "(Unit)0"
   BitV b      -> if b then "1" else "0"
   U64V x      -> printf "0x%x" x
   NatV n      -> show n

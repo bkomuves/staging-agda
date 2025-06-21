@@ -44,6 +44,14 @@ isAtomicBuiltInTy ty = case ty of
 
 --------------------------------------------------------------------------------
 
+bigIntTy' :: Int -> Ty
+bigIntTy' nlimbs = Struct $ replicate nlimbs U64
+
+bigIntTy :: Int -> Ty
+bigIntTy nlimbs = Named ("BigInt" ++ show nlimbs) $ bigIntTy' nlimbs
+
+--------------------------------------------------------------------------------
+
 data Typed a 
   = MkTyped !Ty !a
   deriving (Eq,Show)
