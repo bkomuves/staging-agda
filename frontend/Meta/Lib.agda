@@ -38,8 +38,27 @@ tt = Lit Tt
 
 --------------------------------------------------------------------------------
 
-module BitLib where
+module IOLib where
 
+  input′ : String -> (ty : Ty) -> Tm ty
+  input′ n t = Pri (Input n t)
+
+  input : {ty : Ty} -> String -> Tm ty
+  input {t} n = Pri (Input n t)
+
+--------------------------------------------------------------------------------
+
+ifte : Tm Bit -> Tm s -> Tm s -> Tm s
+ifte b x y = Pri (IFTE b x y)
+
+_&&_ : Tm Bit -> Tm Bit -> Tm Bit
+_&&_ b c   = Pri (And b c)
+
+_||_ : Tm Bit -> Tm Bit -> Tm Bit
+_||_ b c = Pri (Or  b c)
+
+module BitLib where
+ 
   kstBit : Bool -> Tm Bit
   kstBit b = Lit (Val.BitV b)
 
@@ -63,9 +82,6 @@ module BitLib where
 
   not : Tm Bit -> Tm Bit 
   not b = Pri (Not b)
-
-  ifte : Tm Bit -> Tm s -> Tm s -> Tm s
-  ifte b x y = Pri (IFTE b x y)
 
   castBitU64 : Tm Bit -> Tm U64
   castBitU64 x = Pri (CastBitU64 x)

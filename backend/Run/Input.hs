@@ -22,6 +22,17 @@ import Big.Marshal
 
 --------------------------------------------------------------------------------
 
+type Inputs  = Map.Map String Integer
+type Outputs = Map.Map String Integer
+
+emptyInputs :: Inputs
+emptyInputs  = Map.empty
+
+emptyOutputs :: Outputs
+emptyOutputs = Map.empty
+
+--------------------------------------------------------------------------------
+
 -- | We use a trivial format:
 --
 -- > myinput = 123456789

@@ -29,6 +29,12 @@ data EvalState = MkEvalS
   }
   deriving (Eq,Show)
 
+emptyEvalState :: EvalState
+emptyEvalState = MkEvalS
+  { _inputs  = Map.empty
+  , _outputs = Map.empty
+  }
+
 type EvalM a = State EvalState a
 
 type ValM = Val' (State EvalState)

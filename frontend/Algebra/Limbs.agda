@@ -11,6 +11,7 @@ open import Data.Word64   using ( Word64 ; _<_ )
 open import Data.Product
 
 open import Meta.Object
+
 open import Algebra.BigInt using ( BigInt ; BigInt' )
 open import Algebra.Misc   using ( twoTo64 )
 

@@ -87,16 +87,18 @@ one nlimbs = mkSmall nlimbs (kstU64 (fromℕ 1))
 two : (nlimbs : ℕ) -> Tm (BigInt nlimbs)
 two nlimbs = mkSmall nlimbs (kstU64 (fromℕ 2))
 
---------------------------------------------------------------------------------
-
 bigproj : Fin n -> Tm (BigInt n) -> Tm U64
 bigproj j big = vecproj j (unwrap big)
 
-unwrap1 : {ty : Ty} -> Tm (BigInt n) -> (Tm (BigInt' n) -> Tm ty) -> Tm ty
-unwrap1 tm f = Let (unwrap tm) f
+--------------------------------------------------------------------------------
 
-unwrap2 : {ty : Ty} -> Tm (BigInt n) -> Tm (BigInt m) -> (Tm (BigInt' n) -> Tm (BigInt' m) -> Tm ty) -> Tm ty
-unwrap2 tm1 tm2 g = Let (unwrap tm1) \x -> Let (unwrap tm2) \y -> g x y
+private
+
+  unwrap1 : {ty : Ty} -> Tm (BigInt n) -> (Tm (BigInt' n) -> Tm ty) -> Tm ty
+  unwrap1 tm f = Let (unwrap tm) f
+
+  unwrap2 : {ty : Ty} -> Tm (BigInt n) -> Tm (BigInt m) -> (Tm (BigInt' n) -> Tm (BigInt' m) -> Tm ty) -> Tm ty
+  unwrap2 tm1 tm2 g = Let (unwrap tm1) \x -> Let (unwrap tm2) \y -> g x y
 
 --------------------------------------------------------------------------------
 

@@ -2,7 +2,8 @@
 module Run.Eval 
   ( module Run.Eval.Pure
   , module Run.Eval.Monadic
-  , EvalState(..) , EvalM , ValM , EnvM
+  , EvalState(..) , emptyEvalState 
+  , EvalM , ValM , EnvM
   ) 
   where
 

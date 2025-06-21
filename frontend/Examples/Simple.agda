@@ -19,6 +19,8 @@ open import Algebra.Prime
 
 open import Algebra.BigInt using ( BigInt )
 
+open IOLib
+
 module Big where
 
   open import Algebra.BigInt 
@@ -61,9 +63,17 @@ module Big where
   exSmall2 : Tm Bit
   exSmall2 = isGE small1 small2 
 
+  exBinary' : Tm (BigInt 4)
+  exBinary' = bitXor (bitOr big1 big2) (bitAnd (bitComplement big1) big3)
+
   exBinary : Tm (BigInt 4)
-  exBinary = bitXor (bitOr big1 big2) (bitAnd (bitComplement big1) big3)
-  
+  exBinary = runGen do
+    x <- gen (input "x")
+    y <- gen (input "y")
+    z <- gen (input "z")
+    let out = bitXor (bitOr x y) (bitAnd (bitComplement x) z)
+    return out
+
 --------------------------------------------------------------------------------
 -- *** FIELD PRIME ***
 

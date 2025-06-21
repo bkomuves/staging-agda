@@ -1,18 +1,28 @@
 
+-- | CLI executable
+
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 --------------------------------------------------------------------------------
-
-import Data.Bits
 
 import Control.Monad
 
 import Text.Read
 import Text.Show.Pretty
 
+import Data.Maybe
+
+import Data.Semigroup ( (<>) )
+import Options.Applicative
+import System.Exit
+import System.Environment
+
 import AST.Term
 import AST.Random
+
 import Run.Eval
+import Run.Input
 
 import CodeGen.Lifting
 import CodeGen.ANF
@@ -23,225 +33,273 @@ import Big.Limbs
 
 --------------------------------------------------------------------------------
 
--- main = main_Poseidon
--- main = main_MontP
--- main = main_LetFun
--- main = main_Lift
--- main = main_Lam
--- main = main_ModP 
-main = main_binary
--- main = main_Mod1
--- main = main_Small1
--- main = main_Nat
+main :: IO ()
+main = cliMain
 
-main_binary = do
-  runCommon "examples/ex_binary.ast" $ \_ -> return ()
-  putStrLn $ "\nexpected = " ++ show expected ++ "\n"
-  where
-    xs = integerToLimbs 4 12535032671501493392438659292886563663979619812816639413586309554197071221275
-    ys = integerToLimbs 4 20670156704232560809430694243501641649572216251781105022963497476851362916519
-    zs = integerToLimbs 4 10734482926936635597888852654981536388697257091861152194513442686302125663795
-    f x y z = (x .|. y) `xor` (complement x .&. z)
-    expected = zipWith3 f xs ys zs
+cliMain :: IO ()
+cliMain = do
+  opts <- execParser options
+  let files = optFiles opts
+  let flags = optFlags opts
+  when (flagVerbosity flags >= Verbose) $ printOpts opts
 
-main_Lam = do
-  runCommon "examples/ex_mixed.ast" $ \_ -> return ()
+  case (fileAST files) of
+    Nothing -> do
+      putStrLn "no AST file given; nothing to do."
+      putStrLn "use the option `-h` or `--help` to see the available options"
+    Just astFile -> do
+      runCommon flags files
 
-main_Lift = do
-  runCommon "examples/ex_lift1.ast" $ \_ -> return ()
+--------------------------------------------------------------------------------
 
-main_Nat = do
-  runCommon "examples/ex_nat2.ast" $ \_ -> return ()
+printSeparator :: IO ()
+printSeparator = do
+  putStrLn "\n----------------------------------------"
 
-main_LetFun = do
-  runCommon "examples/ex_letfun1.ast" $ \_ -> return ()
+printSeparatorHeader :: String -> IO ()
+printSeparatorHeader header = do
+  printSeparator
+  putStrLn $ "*** " ++ header ++ ":"
 
-main_Small1 = do
-  runCommon "examples/ex_small1.ast" $ \_ -> return ()
+whenJust :: Maybe a -> (a -> IO ()) -> IO ()
+whenJust mb action = case mb of
+  Just x  -> action x
+  Nothing -> return ()
 
-main_Mod1 = do
-  runCommon "examples/ex_mod1.ast" $ \_ -> return ()
+--------------------------------------------------------------------------------
 
-
-main_ModP = do
-  runCommon "examples/ex.ast" $ \res -> case res of
-    WrapV _ bigint -> do
-      printBigIntVal bigint
-      putStrLn $ "expected : " ++ show xplusy
-  where
-    r = mod (2^256) p
-    p = 21888242871839275222246405745257275088548364400416034343698204186575808495617
-    x = 12535032671501493392438659292886563663979619812816639413586309554197071221275
-    y = 20670156704232560809430694243501641649572216251781105022963497476851362916519
-    z = 10734482926936635597888852654981536388697257091861152194513442686302125663795
-    xplusy = mod (x+y) p
-    expected = xplusy
-
-main_MontP = do
-  runCommon' False "examples/ex_mont2d.ast" $ \res -> case res of
-    bigint -> do
-      printBigIntVal bigint
-
-main_Poseidon = do
-  runCommon' False "examples/ex_posei5.ast" $ \res -> case res of
-    StructV [bigx, bigy, bigz] -> do
-      printBigIntVal bigx
-      printBigIntVal bigy
-      printBigIntVal bigz
-
-{-
-  runCommon "examples/ex_mont.ast" $ \res -> case res of
-    WrapV _ bigint -> do
-      printBigIntVal bigint
--}
-
-
-----------------------------------------
-
-runCommon :: FilePath -> (Val -> IO a) -> IO a
-runCommon = runCommon' True
-
-runCommon' :: Bool -> FilePath -> (Val -> IO a) -> IO a
-runCommon' printAstFlag fname kont = do
+runCommon :: Flags -> Files -> IO ()
+runCommon MkFlags{..} MkFiles{..} = do
+  let fname = fromJust fileAST
   text <- readFile fname
   let mbAST = readMaybe text :: Maybe AST
   case mbAST of
     Nothing  -> error $ "cannot parse AST from `" ++ fname ++ "`"
     Just ast -> do
+      let printAstFlag = (flagVerbosity >= Debug)
 
       when printAstFlag $ do
-        putStrLn "---------------------------"
+        printSeparatorHeader "original AST"
         print ast
-
-      let res = eval ast
-      putStrLn $ "\neval result = " ++ show res
 
       let program = lambdaLifting ast
       let anf     = programToANF  program
       let csource = anfToCSource  anf 
 
       when printAstFlag $ do
-        putStrLn "---------------------------"
-        putStrLn $ "lambda-lifted program:"
+        printSeparatorHeader "lambda-lifted program"
         printProgram program
 
       when printAstFlag $ do
-        putStrLn "---------------------------"
-        putStrLn $ "ANF converted program:"
+        printSeparatorHeader "ANF converted program"
         printANFProgram anf
 
       when printAstFlag $ do 
-        putStrLn "---------------------------"
-        putStrLn $ "C source code:"
+        printSeparatorHeader "C source code"
         putStrLn csource
   
-      writeFile "examples/out.c" csource
+      whenJust fileC $ \cfile -> do 
+        when (flagVerbosity >= Verbose) $ do
+          putStrLn $ "writing C output into `" ++ cfile ++ "`"
+        writeFile cfile csource
 
-      putStrLn "---------------------------"
-      putStrLn $ "program type = " ++ show (inferTy_ ast)
+      when (flagVerbosity >= Normal) $ do
+        printSeparator
+        putStrLn $ "program type = " ++ show (inferTy_ ast)
 
-      putStrLn $ "\nresult of the original term     = " ++ show res
-      putStrLn $ "\nresult of lambda lifted program = " ++ show (runProgram program)
-      putStrLn $ "\nresult of ANF converted program = " ++ show (runANFProgram anf)
-      putStrLn " "
-      kont res
+      inputs <- case fileInput of
+        Nothing      -> return emptyInputs
+        Just inpfile -> do
+          text <- readFile inpfile
+          let inputs = parseInputs text
+          when (flagVerbosity >= Verbose) $ do
+            printSeparatorHeader "inputs"
+            printOutputs inputs
+          return inputs
 
---------------------------------------------------------------------------------
--- DEBUGGING
+      when flagEvalProgram $ do
+        printSeparator
+{-
+        putStrLn $ "result of the original term     = " ++ show (eval ast)           ++ "\n"
+        putStrLn $ "result of lambda lifted program = " ++ show (runProgram program) ++ "\n"
+        putStrLn $ "result of ANF converted program = " ++ show (runANFProgram anf)  ++ "\n"
+-}
+        let (out1,res1) = evalWithInputs          inputs ast 
+        let (out2,res2) = runProgramWithInputs    inputs program
+        let (out3,res3) = runANFProgramWithInputs inputs anf 
 
-exRaw0 :: Raw
-exRaw0 = 
-  -- Lit (U64V 101) 
-  -- (Pri (MkRawPrim "AddU64") [ Lit (U64V 101) , Lit (U64V 102) ])
-  Let U64 (Lit (U64V 101)) (Var 0)
+        putStrLn $ "result of the original term     = " ++ show res1 ++ "\n"
+        putStrLn $ "result of lambda lifted program = " ++ show res2 ++ "\n"
+        putStrLn $ "result of ANF converted program = " ++ show res3 ++ "\n"
 
-exRaw1 :: Raw
-exRaw1 = Let U64 
-  (Pri (MkRawPrim "AddU64") [ Lit (U64V 101) , Lit (U64V 102) ])
-  (Pri (MkRawPrim "MulTruncU64") [ Var 0 , Var 0 ])
+        when (flagVerbosity >= Verbose) $ do
+          putStrLn "\noutputs of the original term:"         ; printOutputs out1
+          putStrLn "\noutputs of the lambda lifted program:" ; printOutputs out2
+          putStrLn "\noutputs of the ANF converted program:" ; printOutputs out3
 
-exRaw2 :: Raw
-exRaw2 = Let U64 (Lit (U64V 666)) (Pri (MkRawPrim "MulTruncU64") [Var 0,App (App (Lam U64 (Lam U64 (Var 2))) (Lit (U64V 11999))) (Lit (U64V 25715))])
-
-exRaw3 :: Raw
-exRaw3 = Let U64 (Lit (U64V 666)) (Pri (MkRawPrim "AddU64") [Let U64 (Var 0) (Lit (U64V 30236)),Let U64 (Lit (U64V 25007)) (Var 1)])
-
-exRaw4 :: Raw
-exRaw4 = Let U64 (Lit (U64V 666)) (Let U64 (Let U64 (Var 0) (Lit (U64V 49887))) (Let U64 (Lit (U64V 22063)) (Var 2)))
-
-debugAnfConversion :: Size -> IO ()
-debugAnfConversion target = do
-  term <- randomTermU64 target
-  debugAnfConversion' term
-
-debugAnfConversion' :: Raw -> IO ()
-debugAnfConversion' term = do
-  if (inferTy_ term /= U64) 
-    then error "debugAnfConversion: type inference doesn't match expectations"
-    else do
-      let prg  = lambdaLifting term
-      let anf  = programToANF prg
-
-      putStrLn "---------------------------"
-      putStrLn $ "raw program:"
-      print term
-      putStrLn "---------------------------"
-      putStrLn $ "lambda-lifted program:"
-      printProgram prg
-      putStrLn "---------------------------"
-      putStrLn $ "ANF converted program:"
-      printANFProgram anf
-
-      let res1 = eval term
-      let res2 = runProgram prg
-      let res3 = runANFProgram anf
-      putStrLn $ "result of original      = " ++ show res1
-      putStrLn $ "result of lambda-lifted = " ++ show res2
-      putStrLn $ "result of anf converted = " ++ show res3
-
-findAnfCounterExample :: Size -> IO Raw
-findAnfCounterExample target = do
-  term <- randomTermU64 target
-  let prg  = lambdaLifting term
-  let anf  = programToANF prg
-  let res2 = runProgram prg
-  let res3 = runANFProgram anf
-  if (res2 /= res3) 
-    then return term
-    else findAnfCounterExample target
 
 --------------------------------------------------------------------------------
 
-testLambdaLifting1 :: Size -> IO Bool
-testLambdaLifting1 target = do
-  term <- randomTermU64 target
-  if (inferTy_ term /= U64) 
-    then error "testLambdaLifting1: type inference doesn't match expectations"
-    else do
-      let prg  = lambdaLifting term
-      let res1 = eval term
-      let res2 = runProgram prg
-      return (res1 == res2)
-  
-testAnfConversion1 :: Size -> IO Bool
-testAnfConversion1 target = do
-  term <- randomTermU64 target
-  if (inferTy_ term /= U64) 
-    then error "testAnfConversion1: type inference doesn't match expectations"
-    else do
-      let prg  = lambdaLifting term
-      let anf  = programToANF prg
-      let res1 = eval term
-      let res2 = runProgram prg
-      let res3 = runANFProgram anf
-      return (res2 == res3)
+data Opts = MkOpts
+  { optFiles  :: Files
+  , optFlags  :: Flags
+  }
+  deriving Show
 
-testLambdaLiftingN :: Int -> Size -> IO Bool
-testLambdaLiftingN n target = and <$> replicateM n (testLambdaLifting1 target)
-  
-testAnfConversionN :: Int -> Size -> IO Bool
-testAnfConversionN n target = and <$> replicateM n (testAnfConversion1 target)
+data Files = MkFiles
+  { fileAST    :: Maybe FilePath 
+  , fileC      :: Maybe FilePath 
+  , fileInput  :: Maybe FilePath 
+  , fileOutput :: Maybe FilePath 
+  , fileRef    :: Maybe FilePath 
+  }
+  deriving Show
+
+data Flags = MkFlags
+  { flagEvalProgram :: Bool
+  , flagVerbosity   :: Verbosity
+  , flagMeasureTime :: Bool
+  }
+  deriving Show
+
+data Verbosity 
+  = Silent
+  | Normal
+  | Verbose
+  | Debug
+  deriving (Eq,Ord,Show)
+
+printFiles :: Files -> IO ()
+printFiles files@(MkFiles{..}) = do
+  putStrLn $ "AST file          = " ++ show fileAST   
+  putStrLn $ "C source file     = " ++ show fileC
+  putStrLn $ "Input file        = " ++ show fileInput
+  putStrLn $ "Output file       = " ++ show fileOutput 
+  putStrLn $ "Reference output  = " ++ show fileRef
+
+printFlags :: Flags -> IO ()
+printFlags flags@(MkFlags{..}) = do
+  putStrLn $ "Evaluate program  = " ++ show flagEvalProgram 
+  putStrLn $ "Verbosity         = " ++ show flagVerbosity   
+  putStrLn $ "Measure time      = " ++ show flagMeasureTime 
+
+printOpts :: Opts -> IO ()
+printOpts opts = do
+  putStrLn ""
+  putStrLn "cli options set to:"
+  putStrLn "-------------------"
+  printFiles (optFiles opts)
+  printFlags (optFlags opts)
+  putStrLn ""
 
 --------------------------------------------------------------------------------
 
+options :: ParserInfo Opts
+options = info (optsParser <**> helper)
+  (  fullDesc
+  <> header "staging-agda backend"
+  )  
 
+--------------------------------------------------------------------------------
+
+optsParser :: Parser Opts
+optsParser = MkOpts 
+  <$> filesParser
+  <*> flagsParser
+
+flagsParser :: Parser Flags
+flagsParser = MkFlags
+  <$> evalProgramP
+  <*> verbosityP  
+  <*> measureTimeP
+
+filesParser :: Parser Files
+filesParser = MkFiles
+  <$> astFileP
+  <*> cFileP
+  <*> inpFileP
+  <*> outFileP
+  <*> refFileP
+
+--------------------------------------------------------------------------------
+
+astFileP :: Parser (Maybe FilePath)
+astFileP 
+  = (Just <$> strOption
+      (  long  "ast"
+      <> short 'a'
+      <> metavar "AST_FILE"
+      <> help "AST file (the output from Agda)" ))
+  <|> pure Nothing
+
+cFileP :: Parser (Maybe FilePath)
+cFileP 
+  = (Just <$> strOption
+      (  long  "csource"
+      <> short 'c'
+      <> metavar "C_SOURCE_FILE"
+      <> help "C source file (our output)" ))
+  <|> pure Nothing
+
+inpFileP :: Parser (Maybe FilePath)
+inpFileP 
+  = (Just <$> strOption
+      (  long  "input"
+      <> short 'i'
+      <> metavar "INPUT_FILE"
+      <> help "input file" ))
+  <|> pure Nothing
+
+outFileP :: Parser (Maybe FilePath)
+outFileP 
+  = (Just <$> strOption
+      (  long  "output"
+      <> short 'o'
+      <> metavar "OUTPUT_FILE"
+      <> help "output file" ))
+  <|> pure Nothing
+
+refFileP :: Parser (Maybe FilePath)
+refFileP 
+  = (Just <$> strOption
+      (  long  "ref"
+      <> short 'r'
+      <> metavar "REF_FILE"
+      <> help "reference output file (for test cases)" ))
+  <|> pure Nothing
+
+----------------------------------------
+
+verbosityP :: Parser Verbosity
+verbosityP = (verbose <|> silent <|> debug <|> pure Normal) where
+  verbose = flag' Verbose
+    (  long  "verbose"
+    <> short 'v'
+    <> help  "verbose output"
+    )
+  silent = flag' Silent
+    (  long  "silent"
+    <> short 's'
+    <> help  "silent output"
+    )
+  debug = flag' Debug
+    (  long  "debug"
+    <> short 'd'
+    <> help  "debug output"
+    )
+
+measureTimeP :: Parser Bool
+measureTimeP = switch
+  (  long  "time"
+  <> short 't'
+  <> help  "measure running time"
+  )
+
+evalProgramP :: Parser Bool
+evalProgramP = switch
+  (  long  "eval"
+  <> short 'E'
+  <> help  "evaluate the input program"
+  )
+
+--------------------------------------------------------------------------------

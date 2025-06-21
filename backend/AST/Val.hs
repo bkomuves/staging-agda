@@ -28,6 +28,7 @@ runFunction (MkFun f) x = runIdentity (f x)
 
 --------------------------------------------------------------------------------
 
+-- | here @m@ is the monad used in the functions... somewhat ugly :(
 data Val' m where
   TtV     ::                     Val' m
   BitV    :: Bool             -> Val' m

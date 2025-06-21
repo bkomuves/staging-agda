@@ -29,6 +29,16 @@ import Aux.Misc
 
 --------------------------------------------------------------------------------
 
+runWithInputs :: (a -> EvalM b) -> Inputs -> a -> (Outputs, b)
+runWithInputs action inputs x = 
+  case runState (action x) iniState of
+    (result, outState) -> (_outputs outState , result)
+  where
+    iniState = emptyEvalState { _inputs = inputs }
+
+evalWithInputs :: Inputs -> Raw -> (Outputs, ValM)
+evalWithInputs = runWithInputs evalM
+
 evalM :: Raw -> EvalM ValM
 evalM = evalInEnvM Seq.empty emptyEnv
 
@@ -78,6 +88,8 @@ evalFixM f = f =<< (evalFixM f)
 runProgramM :: Program Raw -> EvalM ValM
 runProgramM (MkProgram tops main) = evalInEnvM tops Seq.empty main
 
+runProgramWithInputs :: Inputs -> Program Raw -> (Outputs, ValM)
+runProgramWithInputs = runWithInputs runProgramM
 
 --------------------------------------------------------------------------------
 
@@ -161,6 +173,9 @@ evalAnfInEnvM topEnv = goANF where
 
 runANFProgramM :: Program ANFE -> EvalM ValM
 runANFProgramM (MkProgram tops main) = evalAnfInEnvM tops Seq.empty main
+
+runANFProgramWithInputs :: Inputs -> Program ANFE -> (Outputs, ValM)
+runANFProgramWithInputs = runWithInputs runANFProgramM
 
 --------------------------------------------------------------------------------
 
