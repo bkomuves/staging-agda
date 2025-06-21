@@ -1,6 +1,7 @@
 *.ast
 *.hi
 *.o
+a.out
 main
 x
 y
